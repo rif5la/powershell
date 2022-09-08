@@ -4,15 +4,77 @@ This script does the following
     looks at the signin log and analyzes the method used to login
     returning the single factor auth methods as well as some other properties
 """
-Add-Type -Path "C:\Users\rissa\Downloads\sqlite-netFx20-binary-bundle-x64-2005-1.0.116.0\System.Data.SQLite.dll"
-$con = New-Object -TypeName System.Data.SQLite.SQLiteConnection
-#$con.ConnectionString
+Add-Type -Path "C:\SQLite\System.Data.SQLite.dll"
+
 Import-Module azureadpreview
-connect-azuread
+
+
+$con = New-Object -TypeName System.Data.SQLite.SQLiteConnection
+$con.ConnectionString = "Data Source=C:\SQLite\test88.db"
+$con.Open()
+$createTableQuery = "CREATE TABLE legacy_auth(
+    ID TEXT NOT NULL PRIMARY KEY,
+    email TEXT NOT NULL,
+    client_app_used TEXT NOT NULL,
+    os_type TEXT NULL,
+    is_managed TEXT NOT NULL,
+    error_code INTEGER NOT NULL,
+    account_enabled TEXT NOT NULL
+                       
+);"
+$CMD = $con.CreateCommand()
+$CMD.CommandText = $createTableQuery
+$CMD.ExecuteNonQuery()
+
+#$CMD.Dispose()
+$con.Close()
+
+#connect-azuread
 
 while ($true) { 
-   # get-azureadauditsigninlogs -Top 999 | ? { ($_.ClientAppUsed -ne "Browser") -and ($_.ClientAppUsed -ne "Mobile Apps and Desktop clients")} | select userprincipalname,ClientAppUsed,{$_.DeviceDetail.OperatingSystem},{$_.DeviceDetail.IsManaged},{$_.Status.ErrorCode},{(get-azureaduser -SearchString $_.userprincipalname).accountenabled} -Unique | ft -AutoSize
 
-    get-azureadauditsigninlogs -Top 999 | ? { ($_.ClientAppUsed -ne "Browser") -and ($_.ClientAppUsed -ne "Mobile Apps and Desktop clients")} | select @{l="Email";e={$_.userprincipalname}},ClientAppUsed,@{l="OS_Type";e={$_.DeviceDetail.OperatingSystem}},@{l="IsManaged?";e={$_.DeviceDetail.IsManaged}},@{l="ErrorCode";e={$_.Status.ErrorCode}},@{l="AccountEnabled";e={(get-azureaduser -SearchString $_.userprincipalname).accountenabled}} -Unique | ft -AutoSize
+   # get-azureadauditsigninlogs -Top 999 | ? { ($_.ClientAppUsed -ne "Browser") -and ($_.ClientAppUsed -ne "Mobile Apps and Desktop clients")} | select userprincipalname,ClientAppUsed,{$_.DeviceDetail.OperatingSystem},{$_.DeviceDetail.IsManaged},{$_.Status.ErrorCode},{(get-azureaduser -SearchString $_.userprincipalname).accountenabled} -Unique | ft -AutoSize
+    #$sql = "INSET OR REPLACE INTO "
+    $rows = get-azureadauditsigninlogs -Top 999 | ? { ($_.ClientAppUsed -ne "Browser") -and ($_.ClientAppUsed -ne "Mobile Apps and Desktop clients")} #| select @{l="Email";e={$_.userprincipalname}},ClientAppUsed,@{l="OS_Type";e={$_.DeviceDetail.OperatingSystem}},@{l="IsManaged";e={$_.DeviceDetail.IsManaged}},@{l="ErrorCode";e={$_.Status.ErrorCode}},@{l="AccountEnabled";e={(get-azureaduser -SearchString $_.userprincipalname).accountenabled}} -Unique | ft -AutoSize -HideTableHeaders
+    
+    #$rows
+    
+    foreach ($row in $rows){
+        $CMD = $con.CreateCommand()
+        $hash = Get-FileHash -InputStream ([System.IO.MemoryStream]::New([System.Text.Encoding]::ASCII.GetBytes($row)))
+
+        #$hash.hash
+        #$row.userprincipalname
+        #$row.ClientAppUsed
+        #$row.DeviceDetail.OperatingSystem
+        #$row.DeviceDetail.IsManaged
+        #$row.Status.ErrorCode
+        #(get-azureaduser -SearchString $row.userprincipalname).accountenabled
+
+
+        $sql = "INSERT OR REPLACE INTO legacy_auth (ID,email,client_app_used,os_type,is_managed,error_code, account_enabled)"
+        $sql += " VALUES (@ID,@email,@client_app_used,@os_type,@is_managed,@error_code,@account_enabled);"
+        
+       
+        $CMD.Parameters.AddWithValue("@ID", $hash.hash)
+        $CMD.Parameters.AddWithValue("@email", $row.userprincipalname)
+        $CMD.Parameters.AddWithValue("@client_app_used", $row.ClientAppUsed)
+        $CMD.Parameters.AddWithValue("@os_type", $row.DeviceDetail.OperatingSystem)
+        $CMD.Parameters.AddWithValue("@is_managed", $row.DeviceDetail.IsManaged)
+        $CMD.Parameters.AddWithValue("@error_code", $row.Status.ErrorCode)
+        $CMD.Parameters.AddWithValue("@account_enabled", (get-azureaduser -SearchString $row.userprincipalname).accountenabled)
+        #$sql
+        $CMD.CommandText = $sql
+        $CMD.ExecuteNonQuery()
+
+        $CMD.Close()
+
+    }
+       
+    # $sql = "INSERT OR REPLACE INTO printer_usage (ID,printed_dt,printed_tm,printed_doc_nm,printed_doc_sz,printed_page_cnt,print_user_id,print_user_comp,print_serv_nm,printer_nm)"
+    # $sql += " VALUES (@ID,@printed_dt,@printed_tm,@printed_doc_nm,@printed_doc_sz,@printed_page_cnt,@print_user_id,@print_user_comp,@print_serv_nm,@printer_nm);"
+     
+ 
 }
+
 
