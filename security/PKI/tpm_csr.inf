@@ -1,0 +1,13 @@
+[NewRequest]
+Subject = "CN=shea@polansky.co" ; can be anything, can also be changed when signing
+Keylength = 2048 ; your TPM may support larger key lengths
+Exportable = FALSE
+UserProtected = TRUE
+MachineKeySet = FALSE
+ProviderName = "Microsoft Platform Crypto Provider"
+ProviderType = 1
+RequestType = PKCS10
+KeyUsage = 0xB0 ; this is a https client certificate, can change when signing
+FriendlyName = "My super secure certificat"
+
+; certreq -new -f .\tpm_csr.inf csr_name.csr

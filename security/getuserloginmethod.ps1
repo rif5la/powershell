@@ -1,33 +1,32 @@
 """
-This script does the following 
-    connects to azure ad
-    looks at the signin log and analyzes the method used to login
-    returning the single factor auth methods as well as some other properties
+This Script uses the azureadpreview module and calls get-azureadauditsigninlogs
+It then parses for unique single factor auth logins
+It writes to a SQLite database localted at C:\SQLite\db4.db
+
+Ronnieissa@gmail.com
+
 """
+####################################################
 Add-Type -Path "C:\SQLite\System.Data.SQLite.dll"
-
-Import-Module azureadpreview
-
 
 $con = New-Object -TypeName System.Data.SQLite.SQLiteConnection
 $con.ConnectionString = "Data Source=C:\SQLite\db4.db"
 $con.Open()
-$createTableQuery = "CREATE TABLE legacy_auth(
-    hash TEXT NOT NULL PRIMARY KEY,
-    email TEXT NOT NULL,
-    client_app_used TEXT NOT NULL,
-    os_type TEXT NULL,
-    is_managed TEXT NOT NULL,
-    error_code INTEGER NOT NULL,
-    account_enabled TEXT NOT NULL                    
-);"
 
 $CMD = $con.CreateCommand()
-$CMD.CommandText = $createTableQuery
+$CMD.CommandText = "CREATE TABLE IF NOT EXISTS legacy_auth(
+        hash TEXT NOT NULL PRIMARY KEY,
+        email TEXT NOT NULL,
+        client_app_used TEXT NOT NULL,
+        os_type TEXT NULL,
+        is_managed TEXT NOT NULL,
+        error_code INTEGER NOT NULL,
+        account_enabled TEXT NOT NULL                    
+    );"
+
 $CMD.ExecuteNonQuery() # returns 0
 
 $CMD.Dispose()
-
 
 while ($true) { 
 
