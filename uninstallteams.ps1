@@ -9,7 +9,7 @@ Get-Process teams | %{Stop-Process $_.id  -force -ErrorAction SilentlyContinue}
 $users = ls C:\users | select -ExpandProperty name
 foreach ($user in $users) {
     if (Test-Path -Path "C:\Users\$user\appdata\local\miicrosoft\teams") {
-        remove-item -Recurse "C:\Users\$user\appdata\local\miicrosoft\teams"
+        remove-item -Recurse "C:\Users\$user\appdata\local\miicrosoft\teams" -Force
     }    
 }
 
